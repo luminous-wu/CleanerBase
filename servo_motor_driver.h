@@ -11,12 +11,8 @@
 #define leftMotorDriverAddress 0x01
 #define rightMotorDriverAddress 0x02
 
-#define LEFT 1
-#define RIGHT 2
-
 #define rxPin_ttl2RS485 12
 #define txPin_ttl2RS485 11
-
 
 #define controlWord 0x6040
 #define operationMode 0x6060
@@ -37,6 +33,19 @@
 ModbusMaster leftMotorDriverNode;
 ModbusMaster rightMotorDriverNode;
 SoftwareSerial MotorDriverSerial(rxPin_ttl2RS485, txPin_ttl2RS485);
+
+uint8_t leftMotorVelocity_1000[13] = {0x01,0x10,0x60,0xff,0x00,0x02,0x04,0x00,0x00,0x03,0xe8,0x14,0x17};
+uint8_t rightMotorVelocity_1000[13] = {0x02,0x10,0x60,0xff,0x00,0x02,0x04,0xff,0xff,0xfc,0x18,0x5a,0xc3};
+
+uint8_t leftMotorVelocity_0[13] = {0x01,0x10,0x60,0xff,0x00,0x02,0x04,0x00,0x00,0x00,0x00,0x14,0xa9};
+uint8_t rightMotorVelocity_0[13] = {0x02,0x10,0x60,0xff,0x00,0x02,0x04,0x00,0x00,0x00,0x00,0x1b,0xed};
+uint8_t u8ReadEncoder[8] = {0x01, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x01};
+uint8_t u8LeftBufferSize = 0;
+uint8_t u8RightBufferSize = 0;
+uint8_t u8LeftReadBuffer[256];
+uint8_t u8RightReadBuffer[256];
+uint8_t u8ReadLeftEncoder[8] = {0x01, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x01};
+uint8_t u8ReadRightEncoder[8] = {0x02, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x32};
 
 static const uint8_t ku8MaxBufferSize                = 64;
 static const uint8_t ku8MBReadHoldingRegisters       = 0x03;
@@ -74,13 +83,17 @@ uint8_t u8RightMotorBufferSize;
 void initMotorController();
 void printHEXcommand(uint8_t* commandArray, int maxNum);
 void setBuffer();
-void setMotorSpeeds(uint32_t leftMotorSpeed, uint32_t rightMotorSpeed);
+void setMotorsSpeeds(uint32_t leftMotorSpeed, uint32_t rightMotorSpeed);
+void setMotorSpeeds(uint32_t u32LeftWriteValue, uint32_t u32RightWriteValue);
 void write2MotorsSingleRegister(uint16_t u16WriteAddress, uint32_t u32LeftRightWriteValue);
 void write2MotorsSingleRegister(uint16_t u16WriteAddress, uint32_t u32LeftWriteValue, uint32_t u32RightWriteValue);
-void Modbus2Transaction(uint8_t u8MBFunction);
+void write2MotorMultipleRegisters(uint16_t u16WriteAddress, uint16_t u16WriteQty, uint32_t u32LeftWriteValue, uint32_t u32RightWriteValue);
 uint8_t readResponseData(ModbusMaster MotorDriverNode, uint8_t* u8MotorBuffer, uint8_t u8MotorBufferSize);
 void readEncoders();
 uint32_t readEncoder(int i);
+void resetEncoder(int i);
+void resetEncoders();
+void Modbus2Transaction(uint8_t u8MBFunction);
 
 void read2MotorsHoldingRegisters(uint16_t u16ReadAddress, uint16_t u16LeftRightReadSize);
 
@@ -121,9 +134,6 @@ void initMotorsController() {
     // write2MotorsSingleRegister(controlWord, 0x0006);
     // write2MotorsSingleRegister(controlWord, 0x000f);
 
-
-
-
 }
 
 void printHEXcommand(uint8_t* commandArray, int maxNum) {
@@ -142,7 +152,7 @@ void setBuffer() {
     rightMotorDriverNode.setTransmitBuffer(1,lowByte(1000));
 }
 
-void setMotorSpeeds(uint32_t leftMotorSpeed, uint32_t rightMotorSpeed) {
+void setMotorsSpeeds(uint32_t leftMotorSpeed, uint32_t rightMotorSpeed) {
     
     u8SpeedBufferSize = 13;
     uint8_t u8ResponseTimeOutFlag = 0;
@@ -221,6 +231,15 @@ void setMotorSpeeds(uint32_t leftMotorSpeed, uint32_t rightMotorSpeed) {
     // Serial.println("==============Verify Motor Speed Response Buffer from Registers===========");
     // printHEXcommand(u8LeftMotorDriverReturnBuffer, u8LeftMotorDriverReturnBufferSize);
     // printHEXcommand(u8RightMotorDriverReturnBuffer, u8RightMotorDriverReturnBufferSize);
+}
+
+void setMotorSpeeds(uint32_t u32LeftWriteValue, uint32_t u32RightWriteValue) {
+    leftMotorDriverNode.setSubIndex(0x00);
+    rightMotorDriverNode.setSubIndex(0x00);
+    u32RightWriteValue = -u32RightWriteValue;
+    _u32LeftTransmitBuffer[0] = u32LeftWriteValue;
+    _u32RightTransmitBuffer[0] = u32RightWriteValue;
+    write2MotorMultipleRegisters(0x60ff, 4, u32LeftWriteValue, u32RightWriteValue);
 }
 
 void write2MotorsSingleRegister(uint16_t u16WriteAddress, uint32_t u32LeftRightWriteValue) {
@@ -401,19 +420,25 @@ uint32_t readEncoder(int i){
     else return u32RightEncoderCount;
 }
 
-void setMotorsSpeeds(uint32_t u32LeftWriteValue, uint32_t u32RightWriteValue) {
-    leftMotorDriverNode.setSubIndex(0x00);
-    rightMotorDriverNode.setSubIndex(0x00);
-    u32RightWriteValue = -u32RightWriteValue;
-    _u32LeftTransmitBuffer[0] = u32LeftWriteValue;
-    _u32RightTransmitBuffer[0] = u32RightWriteValue;
-    write2MotorMultipleRegisters(0x60ff, 4, u32LeftWriteValue, u32RightWriteValue);
-}
-
 void read2MotorsHoldingRegisters(uint16_t u16ReadAddress, uint16_t u16LeftRightReadSize) {
     _u16ReadAddress = u16ReadAddress;
     _u16ReadQty = u16LeftRightReadSize;
     Modbus2Transaction(ku8MBReadHoldingRegisters);
+}
+
+void resetEncoder(int i) {
+    if (i == LEFT) {
+        u32LeftEncoderCount = 0;
+        return;
+    } else { 
+        u32RightEncoderCount = 0;
+        return;
+    }
+}
+
+void resetEncoders() {
+    resetEncoder(LEFT);
+    resetEncoder(RIGHT);
 }
 
 #endif // SERVO_MOTOR_DRIVER_H

@@ -1,46 +1,216 @@
-// Visual Micro is in vMicro>General>Tutorial Mode
-// 
-/*
-    Name:       library_test.ino
-    Created:	2023/10/21 11:13:02
-    Author:     DESKTOP-ISCEB5H\lumin
-*/
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WProgram.h"
+#endif
 
-// Define User Types below here or use a .h file
-//
+/* Include definition of serial commands */
+#include "commands.h"
+
 // #include <ModbusMaster.h>
 // #include <SoftwareSerial.h>
+/* Motor driver function definitions */
 #include "servo_motor_driver.h"
 
+/* Cross Coupling Control parameters and functions */
+#include "CCC.h"
 
-uint8_t leftMotorVelocity_1000[13] = {0x01,0x10,0x60,0xff,0x00,0x02,0x04,0x00,0x00,0x03,0xe8,0x14,0x17};
-uint8_t rightMotorVelocity_1000[13] = {0x02,0x10,0x60,0xff,0x00,0x02,0x04,0xff,0xff,0xfc,0x18,0x5a,0xc3};
+/* Run the CCC loop at 30 times per second */
+#define CCC_RATE           30     // Hz
 
-uint8_t leftMotorVelocity_0[13] = {0x01,0x10,0x60,0xff,0x00,0x02,0x04,0x00,0x00,0x00,0x00,0x14,0xa9};
-uint8_t rightMotorVelocity_0[13] = {0x02,0x10,0x60,0xff,0x00,0x02,0x04,0x00,0x00,0x00,0x00,0x1b,0xed};
-uint8_t u8ReadEncoder[8] = {0x01, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x01};
-uint8_t u8LeftBufferSize = 0;
-uint8_t u8RightBufferSize = 0;
-uint8_t u8LeftReadBuffer[256];
-uint8_t u8RightReadBuffer[256];
-uint8_t u8ReadLeftEncoder[8] = {0x01, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x01};
-uint8_t u8ReadRightEncoder[8] = {0x02, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x32};
+/* Convert the rate into an interval */
+const int CCC_INTERVAL = 1000 / CCC_RATE;
 
-void setup()
-{
-    // for(int i = 0; i < 3; ++i){}
-    initMotorsController();
+/* Track the next time we make a PID calculation */
+unsigned long nextCCC = CCC_INTERVAL;
 
-    // Serial.print("================init over============");
+/* Stop the robot if it hasn't received a movement command
+in this number of milliseconds */
+//  电机接收到速度指令后的运行时间
+#define AUTO_STOP_INTERVAL 5000
+long lastMotorCommand = AUTO_STOP_INTERVAL;
+
+
+
+/* Variable initialization */
+
+// A pair of varibles to help parse serial commands (thanks Fergs)
+int arg = 0;
+int index = 0;
+
+// Variable to hold an input character
+char chr;
+
+// Variable to hold the current single-character command
+char cmd;
+
+// Character arrays to hold the first and second arguments
+char argv1[16];
+char argv2[16];
+
+// The arguments converted to integers
+long arg1;
+long arg2;
+
+/* Clear the current command parameters */
+void resetCommand() {
+  cmd = NULL;
+  memset(argv1, 0, sizeof(argv1));
+  memset(argv2, 0, sizeof(argv2));
+  arg1 = 0;
+  arg2 = 0;
+  arg = 0;
+  index = 0;
 }
 
+/* Run a command.  Commands are defined in commands.h */
+int runCommand() {
+    int i = 0;
+    char *p = argv1;
+    char *str;
+    int CCC_args[8];
+    arg1 = atoi(argv1);
+    arg2 = atoi(argv2);
+    
+    switch(cmd) {
+    case GET_BAUDRATE:
+        Serial.println(BAUDRATE);
+        break;
+    case ANALOG_READ:
+        Serial.println(analogRead(arg1));
+        break;
+    case DIGITAL_READ:
+        Serial.println(digitalRead(arg1));
+        break;
+    case ANALOG_WRITE:
+        analogWrite(arg1, arg2);
+        Serial.println("OK"); 
+        break;
+    case DIGITAL_WRITE:
+        if (arg2 == 0) digitalWrite(arg1, LOW);
+        else if (arg2 == 1) digitalWrite(arg1, HIGH);
+        Serial.println("OK"); 
+        break;
+    case PIN_MODE:
+        if (arg2 == 0) pinMode(arg1, INPUT);
+        else if (arg2 == 1) pinMode(arg1, OUTPUT);
+        Serial.println("OK");
+        break;
+    case PING:
+        Serial.println(Ping(arg1));
+        break;
+    case READ_ENCODERS:
+        Serial.print(readEncoder(LEFT));
+        Serial.print(" ");
+        Serial.println(readEncoder(RIGHT));
+        break;
+    case RESET_ENCODERS:
+        resetEncoders();
+        resetCrossCoupl();
+        Serial.println("OK");
+        break;
+    case MOTOR_SPEEDS:
+        /* Reset the auto stop timer */
+        lastMotorCommand = millis();
+        if (arg1 == 0 && arg2 == 0) {
+            setMotorSpeeds(0, 0);
+            resetCrossCoupl();
+            moving = 0;
+        }
+        else moving = 1;
+        // 设置CCC调试的目标
+        sLeftCrossCoupl.targetVel = arg1;
+        sRightCrossCoupl.targetVel = arg2;
+
+        Serial.println("OK"); 
+        break;
+    case UPDATE_CCC:
+        while ((str = strtok_r(p, ":", &p)) != '\0') {
+            CCC_args[i] = atoi(str);
+            i++;
+        }
+        sLeftCrossCoupl.Kp = CCC_args[0];
+        sLeftCrossCoupl.Kd = CCC_args[1];
+        sLeftCrossCoupl.Ki = CCC_args[2];
+
+        sRightCrossCoupl.Kp = CCC_args[3];
+        sRightCrossCoupl.Kd = CCC_args[4];
+        sRightCrossCoupl.Ki = CCC_args[5];
+
+        Serial.println("OK");
+        break;
+    default:
+        Serial.println("Invalid Command");
+        break;
+    }
+}
+
+void setup() {
+    initMotorsController();
+    resetCrossCoupl();
+}
+
+void loop() {
+
+    // Serial.println(Kp);
+    while (Serial.available() > 0) {
+    
+        // Read the next character
+        chr = Serial.read();
+
+        // Terminate a command with a CR
+        if (chr == 13) {
+            if (arg == 1) argv1[index] = NULL;
+            else if (arg == 2) argv2[index] = NULL;
+            runCommand();
+            resetCommand();
+        }
+        // Use spaces to delimit parts of the command
+        else if (chr == ' ') {
+            // Step through the arguments
+            if (arg == 0) arg = 1;
+            else if (arg == 1)  {
+                argv1[index] = NULL;
+                arg = 2;
+                index = 0;
+            }
+            continue;
+        }
+        else {
+            if (arg == 0) {
+                // The first arg is the single-letter command
+                cmd = chr;
+            }
+            else if (arg == 1) {
+                // Subsequent arguments can be more than one character
+                argv1[index] = chr;
+                index++;
+            }
+            else if (arg == 2) {
+                argv2[index] = chr;
+                index++;
+            }
+        }
+    }
+  
+
+    if (millis() > nextCCC) {
+        updateCrossCoupl();
+        nextCCC += CCC_INTERVAL;
+    }
+  
+    // Check to see if we have exceeded the auto-stop interval
+    if ((millis() - lastMotorCommand) > AUTO_STOP_INTERVAL) {;
+        setMotorSpeeds(0, 0);
+        moving = 0;
+    }
+}
+/*
 // Add the main program code into the continuous loop() function
 void loop()
 {
     static int i = 0;
     // read2MotorsHoldingRegisters(0x2020, 0x02);
-
-
     readEncoders();
     delay(5000);
     Serial.println("============orig encoder count==========");
@@ -162,6 +332,6 @@ void loop()
 
     // Serial.println("========OVER========");
     // for(;;){}
-
-
 }
+
+*/
