@@ -39,7 +39,10 @@ uint8_t rightMotorVelocity_1000[13] = {0x02,0x10,0x60,0xff,0x00,0x02,0x04,0xff,0
 
 uint8_t leftMotorVelocity_0[13] = {0x01,0x10,0x60,0xff,0x00,0x02,0x04,0x00,0x00,0x00,0x00,0x14,0xa9};
 uint8_t rightMotorVelocity_0[13] = {0x02,0x10,0x60,0xff,0x00,0x02,0x04,0x00,0x00,0x00,0x00,0x1b,0xed};
-uint8_t u8ReadEncoder[8] = {0x01, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x01};
+
+uint8_t u8LeftMotorEncoder[8] = {0x01, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x01};
+uint8_t u8RightMotorEncoder[8] = {0x02, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x32};
+
 uint8_t u8LeftBufferSize = 0;
 uint8_t u8RightBufferSize = 0;
 uint8_t u8LeftReadBuffer[256];
@@ -356,28 +359,23 @@ void Modbus2Transaction(uint8_t u8MBFunction) {
     u8RightMotorBuffer[u8RightMotorBufferSize++] = lowByte(u16CRC_rightMotor);
     u8RightMotorBuffer[u8RightMotorBufferSize++] = highByte(u16CRC_rightMotor);
 
-    printHEXcommand(u8LeftMotorBuffer, u8LeftMotorBufferSize);
-    printHEXcommand(u8RightMotorBuffer, u8RightMotorBufferSize);
+    // printHEXcommand(u8LeftMotorBuffer, u8LeftMotorBufferSize);
+    // printHEXcommand(u8RightMotorBuffer, u8RightMotorBufferSize);
 
     // flush receive buffer before transmitting request
     while ((leftMotorDriverNode._serial->read() != -1) && (rightMotorDriverNode._serial->read() != -1));
     
     // transmit request
     if (leftMotorDriverNode._preTransmission) {leftMotorDriverNode._preTransmission();}
-    if (rightMotorDriverNode._preTransmission) {rightMotorDriverNode._preTransmission();}
-
     for (i = 0; i < u8LeftMotorBufferSize; ++i) {leftMotorDriverNode._serial->write(u8LeftMotorBuffer[i]);}
-    // for (i = 0; i < u8LeftMotorBufferSize; ++i) { Serial.print(u8LeftMotorBuffer[i], HEX);Serial.print(",");}
-    // Serial.println("");
-    for (i = 0; i < u8RightMotorBufferSize; ++i) {rightMotorDriverNode._serial->write(u8RightMotorBuffer[i]);}
-    // for (i = 0; i < u8RightMotorBufferSize; ++i) { Serial.print(u8RightMotorBuffer[i], HEX);Serial.print(",");}
-    // Serial.println("");
     leftMotorDriverNode._serial->flush();    // flush transmit buffer
-    rightMotorDriverNode._serial->flush();
-
     if (leftMotorDriverNode._postTransmission) {leftMotorDriverNode._postTransmission();}
-    if (rightMotorDriverNode._postTransmission) {rightMotorDriverNode._postTransmission();}
     u8LeftResponseTimeOutFlag = readResponseData(leftMotorDriverNode, u8LeftMotorBuffer, u8LeftMotorBufferSize);
+
+    if (rightMotorDriverNode._preTransmission) {rightMotorDriverNode._preTransmission();}
+    for (i = 0; i < u8RightMotorBufferSize; ++i) {rightMotorDriverNode._serial->write(u8RightMotorBuffer[i]);}
+    rightMotorDriverNode._serial->flush();
+    if (rightMotorDriverNode._postTransmission) {rightMotorDriverNode._postTransmission();}
     u8RightResponseTimeOutFlag = readResponseData(rightMotorDriverNode, u8RightMotorBuffer, u8RightMotorBufferSize);
     
     // printHEXcommand(u8LeftMotorBuffer, u8LeftMotorBufferSize);
@@ -403,6 +401,7 @@ uint8_t readResponseData(ModbusMaster MotorDriverNode, uint8_t* u8MotorBuffer, u
             u8ResponseTimeOutFlag = 1;
         }
     }
+    printHEXcommand(u8MotorBuffer, u8MotorBufferSize);
     return u8ResponseTimeOutFlag;
 }
 

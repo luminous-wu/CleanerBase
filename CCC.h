@@ -32,7 +32,7 @@ sCrossCouplPara sMotorsCrossCouplPara{0.5, 0.02, -0.5};
 void resetCrossCoupl() {
     sLeftCrossCoupl.targetVel = 0.0;
     sLeftCrossCoupl.actualVel = 0.0;
-    sLeftCrossCoupl.Encoder = readEncoder(LEFT);
+    // sLeftCrossCoupl.Encoder = readEncoder(LEFT);
     sLeftCrossCoupl.Encoder_last = sLeftCrossCoupl.Encoder;
     sLeftCrossCoupl.error = 0.0;
     sLeftCrossCoupl.error_next = 0.0;
@@ -44,7 +44,7 @@ void resetCrossCoupl() {
 
     sRightCrossCoupl.targetVel = 0.0;
     sRightCrossCoupl.actualVel = 0.0;
-    sRightCrossCoupl.Encoder = readEncoder(RIGHT);
+    // sRightCrossCoupl.Encoder = readEncoder(RIGHT);
     sRightCrossCoupl.Encoder_last = sRightCrossCoupl.Encoder;
     sRightCrossCoupl.error = 0.0;
     sRightCrossCoupl.error_next = 0.0;
