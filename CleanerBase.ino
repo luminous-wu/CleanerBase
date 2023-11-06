@@ -149,8 +149,6 @@ void setup() {
     
     initMotorController();
     resetCrossCoupl();
-
-    // Serial.println(i);
     
 }
 /*
@@ -168,7 +166,7 @@ void loop() {
             else if (arg == 2) argv2[index] = NULL;
             runCommand();
             resetCommand();
-            Serial.println("execute in "chr == 13" ");
+            // Serial.println("execute in "chr == 13" ");
         }
         // Use spaces to delimit parts of the command
         else if (chr == ' ') {
@@ -179,11 +177,11 @@ void loop() {
                 arg = 2;
                 index = 0;
             }
-            Serial.println("execute in "chr == ' '" ");
+            // Serial.println("execute in "chr == ' '" ");
             continue;
         }
         else {
-            Serial.println("execute in "chr == '  2'" ");
+            // Serial.println("execute in "chr == '  2'" ");
             if (arg == 0) {
                 // The first arg is the single-letter command
                 cmd = chr;
@@ -204,56 +202,44 @@ void loop() {
     if (millis() > nextCCC) {
         updateCrossCoupl();
         nextCCC += CCC_INTERVAL;
-        Serial.println("execute in millis() > nextCCC ");
+        // Serial.println("execute in millis() > nextCCC ");
     }
   
     // Check to see if we have exceeded the auto-stop interval
     if ((millis() - lastMotorCommand) > AUTO_STOP_INTERVAL) {;
         setMotorSpeeds(0, 0);
         moving = 0;
-        Serial.println("execute in (millis() - lastMotorCommand) > AUTO_STOP_INTERVAL ");
+        // Serial.println("execute in (millis() - lastMotorCommand) > AUTO_STOP_INTERVAL ");
     }
 }
 */
 
-
+/**/
 void loop()
 {
     static int i = 0;
-    // read2MotorsHoldingRegisters(0x2020, 0x02);
-    // readEncoders();
-    leftMotorDriverNode._serial->write(u8ReadLeftEncoder, sizeof(u8ReadLeftEncoder));
-    // for (auto i: u8LeftMotorEncoder) {leftMotorDriverNode._serial->write(i);}
-    leftMotorDriverNode._serial->flush();
-    while(!(leftMotorDriverNode._serial->available())) {}
-    while(leftMotorDriverNode._serial->available()) {
-        u8LeftReadBuffer[u8LeftBufferSize++] = leftMotorDriverNode._serial->read();
-    }
-    delay(100);
+    uint32_t u32LeftStartTime = millis();
+    readEncoder(LEFT);
+    uint32_t u32LeftEndTime = millis() - u32LeftStartTime;
+    uint32_t u32RightStartTime = millis();
+    readEncoder(RIGHT);
+    uint32_t u32RightEndTime = millis() - u32RightStartTime;
 
-    rightMotorDriverNode._serial->write(u8ReadRightEncoder, sizeof(u8ReadRightEncoder));
-    rightMotorDriverNode._serial->flush();
-
-    while(!(rightMotorDriverNode._serial->available())) {}
-    while(rightMotorDriverNode._serial->available()) {
-        u8RightReadBuffer[u8RightBufferSize++] = rightMotorDriverNode._serial->read();
-    }
-    delay(100);
-    printHEXcommand(u8LeftReadBuffer, u8LeftBufferSize);
-    printHEXcommand(u8RightReadBuffer, u8RightBufferSize);
-    // readResponseData(leftMotorDriverNode, u8LeftMotorBuffer, u8LeftMotorBufferSize);
-
-    // for (auto i: u8RightMotorEncoder) {rightMotorDriverNode._serial->write(i);}
-    // rightMotorDriverNode._serial->flush();
-    // readResponseData(rightMotorDriverNode, u8RightMotorBuffer, u8RightMotorBufferSize);
+    Serial.print("left read encoder duration: ");
+    Serial.println(u32LeftEndTime);
+    Serial.print("right read encoder duration: ");
+    Serial.println(u32RightEndTime);
+    Serial.print("u32LeftEncoderCount:");
+    Serial.println(u32LeftEncoderCount);
+    Serial.print("u32RightEncoderCount:");
+    Serial.println(u32RightEncoderCount);
+    
     u8LeftBufferSize = 0;
     u8RightBufferSize = 0;
-    delay(5000);
-
     ++i;
     Serial.println("==============end================");
-    // delay(5000);
-    if(i==10){FOREVER;}
+    delay(5000);
+//    if(i==10){FOREVER;}
     
 }
 

@@ -54,6 +54,7 @@ static const uint8_t ku8MaxBufferSize                = 64;
 static const uint8_t ku8MBReadHoldingRegisters       = 0x03;
 static const uint8_t ku8MBWriteSingleRegister        = 0x06;
 static const uint8_t ku8MBWriteMultipleRegisters     = 0x10;
+const uint32_t u32EncoderMaxCount                    = 10000;
 
 uint8_t writeData[256];
 uint8_t leftWriteData[256];
@@ -397,26 +398,32 @@ uint8_t readResponseData(ModbusMaster MotorDriverNode, uint8_t* u8MotorBuffer, u
             if(!(MotorDriverNode._serial->available())){u8DataReading = 0;}
         }
 
-        if (millis() - u32StartTime > 2000) {
-            u8ResponseTimeOutFlag = 1;
-        }
+        if (millis() - u32StartTime > 2000) {u8ResponseTimeOutFlag = -1;}
     }
-    printHEXcommand(u8MotorBuffer, u8MotorBufferSize);
+    // delay(8);
+    // printHEXcommand(u8MotorBuffer, u8MotorBufferSize);
     return u8ResponseTimeOutFlag;
 }
 
-void readEncoders() {
-    leftMotorDriverNode.setSubIndex(0x00);
-    rightMotorDriverNode.setSubIndex(0x00);
-    read2MotorsHoldingRegisters(encoderAddress, 0x02);
-    u32LeftEncoderCount = (u8LeftMotorBuffer[3] << 24) | (u8LeftMotorBuffer[4] << 16) | (u8LeftMotorBuffer[5] << 8) | u8LeftMotorBuffer[6];
-    u32RightEncoderCount = (u8RightMotorBuffer[3] << 24) | (u8RightMotorBuffer[4] << 16) | (u8RightMotorBuffer[5] << 8) | u8RightMotorBuffer[6];
-}
-
 uint32_t readEncoder(int i){
-    readEncoders();
-    if(i == LEFT) return u32LeftEncoderCount;
-    else return u32RightEncoderCount;
+    if (i == LEFT) {
+        leftMotorDriverNode._serial->write(u8ReadLeftEncoder, sizeof(u8ReadLeftEncoder));
+        leftMotorDriverNode._serial->flush();
+        if (readResponseData(leftMotorDriverNode, u8LeftReadBuffer, u8LeftBufferSize) == -1) {Serial.println("read data time out");}
+        if (u8LeftReadBuffer[1] != 0x03) {readEncoder(LEFT);}
+        u32LeftEncoderCount = ((uint32_t)u8LeftReadBuffer[3] << 24) | ((uint32_t)u8LeftReadBuffer[4] << 16) | ((uint32_t)u8LeftReadBuffer[5] << 8) | (uint32_t)u8LeftReadBuffer[6];
+        if (u32LeftEncoderCount > u32EncoderMaxCount) {readEncoder(LEFT);}
+        return u32LeftEncoderCount;
+    }
+    else {
+        rightMotorDriverNode._serial->write(u8ReadRightEncoder, sizeof(u8ReadRightEncoder));
+        rightMotorDriverNode._serial->flush();
+        if (readResponseData(rightMotorDriverNode, u8RightReadBuffer, u8RightBufferSize) == -1) {Serial.println("read data time out");}
+        if (u8RightReadBuffer[1] != 0x03){readEncoder(RIGHT);}
+        u32RightEncoderCount = ((uint32_t)u8RightReadBuffer[3] << 24) | ((uint32_t)u8RightReadBuffer[4] << 16) | ((uint32_t)u8RightReadBuffer[5] << 8) | (uint32_t)u8RightReadBuffer[6];
+        if (u32RightEncoderCount > u32EncoderMaxCount) {readEncoder(RIGHT);}
+        return u32RightEncoderCount;
+    }
 }
 
 void read2MotorsHoldingRegisters(uint16_t u16ReadAddress, uint16_t u16LeftRightReadSize) {
