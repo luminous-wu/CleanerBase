@@ -6,6 +6,8 @@
 
 #include <ModbusMaster.h>
 #include <SoftwareSerial.h>
+// #include "CCC.h"
+// extern sCrossCoupl sLeftCrossCoupl, sRightCrossCoupl;
 
 #define BAUDRATE 115200
 #define leftMotorDriverAddress 0x01
@@ -49,12 +51,15 @@ uint8_t u8LeftReadBuffer[256];
 uint8_t u8RightReadBuffer[256];
 uint8_t u8ReadLeftEncoder[8] = {0x01, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x01};
 uint8_t u8ReadRightEncoder[8] = {0x02, 0x03, 0x20, 0x20, 0x00, 0x02, 0xCE, 0x32};
+uint8_t u8ReadLeftFilterVel[8] = {0x01, 0x03, 0x20, 0x28, 0x00, 0x02, 0x4F, 0xC3};
+uint8_t u8ReadRightFilterVel[8] = {0x02, 0x03, 0x20, 0x28, 0x00, 0x02, 0x4F, 0xF0};
 
 static const uint8_t ku8MaxBufferSize                = 64;
 static const uint8_t ku8MBReadHoldingRegisters       = 0x03;
 static const uint8_t ku8MBWriteSingleRegister        = 0x06;
 static const uint8_t ku8MBWriteMultipleRegisters     = 0x10;
 const uint32_t u32EncoderMaxCount                    = 10000;
+const int32_t i32MaxSpeed                            = 4000;
 
 uint8_t writeData[256];
 uint8_t leftWriteData[256];
@@ -72,6 +77,8 @@ uint32_t _u32LeftTransmitBuffer[ku8MaxBufferSize];
 uint32_t _u32RightTransmitBuffer[ku8MaxBufferSize];
 uint32_t u32LeftEncoderCount;
 uint32_t u32RightEncoderCount;
+int32_t i32LeftFilterVel;
+int32_t i32RightFilterVel;
 
 uint16_t _u16WriteAddress;
 uint16_t _u16ReadAddress;
@@ -240,7 +247,7 @@ void setMotorsSpeeds(uint32_t leftMotorSpeed, uint32_t rightMotorSpeed) {
 void setMotorSpeeds(uint32_t u32LeftWriteValue, uint32_t u32RightWriteValue) {
     leftMotorDriverNode.setSubIndex(0x00);
     rightMotorDriverNode.setSubIndex(0x00);
-    u32RightWriteValue = -u32RightWriteValue;
+    u32LeftWriteValue = -u32LeftWriteValue;
     _u32LeftTransmitBuffer[0] = u32LeftWriteValue;
     _u32RightTransmitBuffer[0] = u32RightWriteValue;
     write2MotorMultipleRegisters(0x60ff, 4, u32LeftWriteValue, u32RightWriteValue);
@@ -410,21 +417,82 @@ uint32_t readEncoder(int i){
         leftMotorDriverNode._serial->write(u8ReadLeftEncoder, sizeof(u8ReadLeftEncoder));
         leftMotorDriverNode._serial->flush();
         if (readResponseData(leftMotorDriverNode, u8LeftReadBuffer, u8LeftBufferSize) == -1) {Serial.println("read data time out");}
-        if (u8LeftReadBuffer[1] != 0x03) {readEncoder(LEFT);}
+        if (u8LeftReadBuffer[1] != 0x03 && u8LeftReadBuffer[2] != 0x04) {readEncoder(LEFT);}
         u32LeftEncoderCount = ((uint32_t)u8LeftReadBuffer[3] << 24) | ((uint32_t)u8LeftReadBuffer[4] << 16) | ((uint32_t)u8LeftReadBuffer[5] << 8) | (uint32_t)u8LeftReadBuffer[6];
-        if (u32LeftEncoderCount > u32EncoderMaxCount) {readEncoder(LEFT);}
+         if (u32LeftEncoderCount > u32EncoderMaxCount) {readEncoder(LEFT);}
         return u32LeftEncoderCount;
     }
     else {
         rightMotorDriverNode._serial->write(u8ReadRightEncoder, sizeof(u8ReadRightEncoder));
         rightMotorDriverNode._serial->flush();
         if (readResponseData(rightMotorDriverNode, u8RightReadBuffer, u8RightBufferSize) == -1) {Serial.println("read data time out");}
-        if (u8RightReadBuffer[1] != 0x03){readEncoder(RIGHT);}
+        if (u8RightReadBuffer[1] != 0x03 && u8RightReadBuffer[2] != 0x04){readEncoder(RIGHT);}
         u32RightEncoderCount = ((uint32_t)u8RightReadBuffer[3] << 24) | ((uint32_t)u8RightReadBuffer[4] << 16) | ((uint32_t)u8RightReadBuffer[5] << 8) | (uint32_t)u8RightReadBuffer[6];
-        if (u32RightEncoderCount > u32EncoderMaxCount) {readEncoder(RIGHT);}
+         if (u32RightEncoderCount > u32EncoderMaxCount) {readEncoder(RIGHT);}
         return u32RightEncoderCount;
     }
 }
+
+int32_t readFilterVel(int i){
+    static uint32_t u32StartTime1 = millis();
+//    static uint8_t i = 0;
+    if (i == LEFT) {
+        leftMotorDriverNode._serial->write(u8ReadLeftFilterVel, sizeof(u8ReadLeftFilterVel));
+        leftMotorDriverNode._serial->flush();
+        if (readResponseData(leftMotorDriverNode, u8LeftReadBuffer, u8LeftBufferSize) == -1) {Serial.println("left node read data time out"); return -1;}
+        if (u8LeftReadBuffer[1] != 0x03 && u8LeftReadBuffer[2] != 0x04) {
+            readFilterVel(LEFT);
+            // if (millis() - u32StartTime1 > 2000) {
+            //     Serial.print(millis() - u32StartTime1);
+            //     Serial.println("left node the first time re-read data time out");
+            //     u32StartTime1 = millis();
+            //     return -1;
+            // }
+        }
+        i32LeftFilterVel = ((uint32_t)u8LeftReadBuffer[3] << 24) | ((uint32_t)u8LeftReadBuffer[4] << 16) | ((uint32_t)u8LeftReadBuffer[5] << 8) | (uint32_t)u8LeftReadBuffer[6];
+        static uint32_t u32StartTime2 = millis();
+        if (i32LeftFilterVel > i32MaxSpeed || i32LeftFilterVel < -i32MaxSpeed) {
+            readFilterVel(LEFT);
+            // if (millis() - u32StartTime2 > 2000) {
+            //     Serial.print(millis() - u32StartTime2);
+            //     Serial.println("left node the second time re-read data time out");
+            //     u32StartTime2 = millis();
+            //     return -1;
+            // }
+        }
+        u32StartTime1 = 0;
+        u32StartTime2 = 0;
+        return -i32LeftFilterVel;
+    }
+    else {
+        rightMotorDriverNode._serial->write(u8ReadRightFilterVel, sizeof(u8ReadRightFilterVel));
+        rightMotorDriverNode._serial->flush();
+        if (readResponseData(rightMotorDriverNode, u8RightReadBuffer, u8RightBufferSize) == -1) {Serial.println("right node read data time out"); return -1;}
+        if (u8RightReadBuffer[1] != 0x03 && u8RightReadBuffer[2] != 0x04) {
+            readFilterVel(RIGHT);
+            // if (millis() - u32StartTime1 > 2000) {
+            //     Serial.print(millis() - u32StartTime1);
+            //     Serial.println("right node the first time re-read data time out");
+            //     u32StartTime1 = 0;
+            //     return -1;
+            // }
+        }
+        i32RightFilterVel = ((uint32_t)u8RightReadBuffer[3] << 24) | ((uint32_t)u8RightReadBuffer[4] << 16) | ((uint32_t)u8RightReadBuffer[5] << 8) | (uint32_t)u8RightReadBuffer[6];
+        static uint32_t u32StartTime3 = millis();
+        if (i32RightFilterVel > i32MaxSpeed || i32RightFilterVel < -i32MaxSpeed) {
+            readFilterVel(RIGHT);
+            // if (millis() - u32StartTime3 > 2000) {
+            //     Serial.println("right node the second time re-read data time out");
+            //     u32StartTime3 = 0;
+            //     return -1;
+            // }
+        }
+        u32StartTime1 = 0;
+        u32StartTime3 = 0;
+        return i32RightFilterVel;
+    }
+}
+
 
 void read2MotorsHoldingRegisters(uint16_t u16ReadAddress, uint16_t u16LeftRightReadSize) {
     _u16ReadAddress = u16ReadAddress;

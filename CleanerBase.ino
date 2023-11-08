@@ -16,7 +16,7 @@
 #include "CCC.h"
 
 /* Run the CCC loop at 30 times per second */
-#define CCC_RATE           30     // Hz
+#define CCC_RATE           100     // Hz
 
 /* Convert the rate into an interval */
 const int CCC_INTERVAL = 1000 / CCC_RATE;
@@ -27,7 +27,7 @@ unsigned long nextCCC = CCC_INTERVAL;
 /* Stop the robot if it hasn't received a movement command
 in this number of milliseconds */
 //  电机接收到速度指令后的运行时间
-#define AUTO_STOP_INTERVAL 5000
+#define AUTO_STOP_INTERVAL 3000
 long lastMotorCommand = AUTO_STOP_INTERVAL;
 
 
@@ -104,6 +104,11 @@ int runCommand() {
         Serial.print(" ");
         Serial.println(readEncoder(RIGHT));
         break;
+    case READ_VEL:
+        Serial.print(readFilterVel(LEFT));
+        Serial.print(" ");
+        Serial.println(readFilterVel(RIGHT));
+        break;
     case RESET_ENCODERS:
         resetEncoders();
         resetCrossCoupl();
@@ -151,7 +156,7 @@ void setup() {
     resetCrossCoupl();
     
 }
-/*
+// /*
 void loop() {
 
     // Serial.println(Kp);
@@ -197,10 +202,11 @@ void loop() {
             }
         }
     }
-  
+
 
     if (millis() > nextCCC) {
         updateCrossCoupl();
+
         nextCCC += CCC_INTERVAL;
         // Serial.println("execute in millis() > nextCCC ");
     }
@@ -212,34 +218,63 @@ void loop() {
         // Serial.println("execute in (millis() - lastMotorCommand) > AUTO_STOP_INTERVAL ");
     }
 }
-*/
+// */
 
-/**/
+/*
 void loop()
 {
-    static int i = 0;
-    uint32_t u32LeftStartTime = millis();
-    readEncoder(LEFT);
-    uint32_t u32LeftEndTime = millis() - u32LeftStartTime;
-    uint32_t u32RightStartTime = millis();
-    readEncoder(RIGHT);
-    uint32_t u32RightEndTime = millis() - u32RightStartTime;
+    while (Serial.available() > 0) {
+    
+        // Read the next character
+        chr = Serial.read();
 
-    Serial.print("left read encoder duration: ");
-    Serial.println(u32LeftEndTime);
-    Serial.print("right read encoder duration: ");
-    Serial.println(u32RightEndTime);
-    Serial.print("u32LeftEncoderCount:");
-    Serial.println(u32LeftEncoderCount);
-    Serial.print("u32RightEncoderCount:");
-    Serial.println(u32RightEncoderCount);
-    
-    u8LeftBufferSize = 0;
-    u8RightBufferSize = 0;
-    ++i;
-    Serial.println("==============end================");
-    delay(5000);
-//    if(i==10){FOREVER;}
-    
+        // Terminate a command with a CR
+        if (chr == 13) {
+            if (arg == 1) argv1[index] = NULL;
+            else if (arg == 2) argv2[index] = NULL;
+            runCommand();
+            resetCommand();
+            // Serial.println("execute in "chr == 13" ");
+        }
+        // Use spaces to delimit parts of the command
+        else if (chr == ' ') {
+            // Step through the arguments
+            if (arg == 0) arg = 1;
+            else if (arg == 1)  {
+                argv1[index] = NULL;
+                arg = 2;
+                index = 0;
+            }
+            // Serial.println("execute in "chr == ' '" ");
+            continue;
+        }
+        else {
+            // Serial.println("execute in "chr == '  2'" ");
+            if (arg == 0) {
+                // The first arg is the single-letter command
+                cmd = chr;
+            }
+            else if (arg == 1) {
+                // Subsequent arguments can be more than one character
+                argv1[index] = chr;
+                index++;
+            }
+            else if (arg == 2) {
+                argv2[index] = chr;
+                index++;
+            }
+        }
+    }
+
+    // uint32_t u32StartTime = millis();
+    // updateCrossCoupl();
+    setMotorSpeeds(200, 200);
+    // Serial.println(millis() - u32StartTime);
+    // Check to see if we have exceeded the auto-stop interval
+    if ((millis() - lastMotorCommand) > AUTO_STOP_INTERVAL) {;
+        setMotorSpeeds(0, 0);
+        moving = 0;
+        // Serial.println("execute in (millis() - lastMotorCommand) > AUTO_STOP_INTERVAL ");
+    }
 }
-
+*/
