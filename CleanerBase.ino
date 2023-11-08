@@ -27,7 +27,7 @@ unsigned long nextCCC = CCC_INTERVAL;
 /* Stop the robot if it hasn't received a movement command
 in this number of milliseconds */
 //  电机接收到速度指令后的运行时间
-#define AUTO_STOP_INTERVAL 3000
+#define AUTO_STOP_INTERVAL 5000
 long lastMotorCommand = AUTO_STOP_INTERVAL;
 
 
@@ -276,5 +276,17 @@ void loop()
         moving = 0;
         // Serial.println("execute in (millis() - lastMotorCommand) > AUTO_STOP_INTERVAL ");
     }
+}
+*/
+
+/*
+void loop() {
+  setMotorSpeeds(0, 1000);
+  uint32_t startTime = millis();
+  while(1){
+    int vel = readFilterVel(RIGHT);
+    Serial.println(vel);
+    if(millis() - startTime > 1500) {setMotorSpeeds(0, 0);for(;;){};}
+  } 
 }
 */

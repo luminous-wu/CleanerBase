@@ -60,6 +60,7 @@ static const uint8_t ku8MBWriteSingleRegister        = 0x06;
 static const uint8_t ku8MBWriteMultipleRegisters     = 0x10;
 const uint32_t u32EncoderMaxCount                    = 10000;
 const int32_t i32MaxSpeed                            = 4000;
+const int8_t i8MaxReReadTimes                        = 15;
 
 uint8_t writeData[256];
 uint8_t leftWriteData[256];
@@ -79,6 +80,8 @@ uint32_t u32LeftEncoderCount;
 uint32_t u32RightEncoderCount;
 int32_t i32LeftFilterVel;
 int32_t i32RightFilterVel;
+int32_t i32LeftTempVel;
+int32_t i32RightTempVel;
 
 uint16_t _u16WriteAddress;
 uint16_t _u16ReadAddress;
@@ -434,14 +437,16 @@ uint32_t readEncoder(int i){
 }
 
 int32_t readFilterVel(int i){
-    static uint32_t u32StartTime1 = millis();
-//    static uint8_t i = 0;
+    // static uint32_t u32StartTime1 = millis();
+    static int8_t j = 0;
     if (i == LEFT) {
         leftMotorDriverNode._serial->write(u8ReadLeftFilterVel, sizeof(u8ReadLeftFilterVel));
         leftMotorDriverNode._serial->flush();
         if (readResponseData(leftMotorDriverNode, u8LeftReadBuffer, u8LeftBufferSize) == -1) {Serial.println("left node read data time out"); return -1;}
         if (u8LeftReadBuffer[1] != 0x03 && u8LeftReadBuffer[2] != 0x04) {
             readFilterVel(LEFT);
+            ++j;
+            if (j == i8MaxReReadTimes) {Serial.println("left node the first time re-read data time out"); j = 0; return i32LeftTempVel;}
             // if (millis() - u32StartTime1 > 2000) {
             //     Serial.print(millis() - u32StartTime1);
             //     Serial.println("left node the first time re-read data time out");
@@ -449,10 +454,13 @@ int32_t readFilterVel(int i){
             //     return -1;
             // }
         }
+        j = 0;
         i32LeftFilterVel = ((uint32_t)u8LeftReadBuffer[3] << 24) | ((uint32_t)u8LeftReadBuffer[4] << 16) | ((uint32_t)u8LeftReadBuffer[5] << 8) | (uint32_t)u8LeftReadBuffer[6];
-        static uint32_t u32StartTime2 = millis();
+        static int8_t k = 0;
         if (i32LeftFilterVel > i32MaxSpeed || i32LeftFilterVel < -i32MaxSpeed) {
             readFilterVel(LEFT);
+            ++k;
+            if (k == i8MaxReReadTimes) {Serial.println("left node the second time re-read data time out"); k = 0; return i32LeftTempVel;}
             // if (millis() - u32StartTime2 > 2000) {
             //     Serial.print(millis() - u32StartTime2);
             //     Serial.println("left node the second time re-read data time out");
@@ -460,8 +468,9 @@ int32_t readFilterVel(int i){
             //     return -1;
             // }
         }
-        u32StartTime1 = 0;
-        u32StartTime2 = 0;
+        k = 0;
+        // u32StartTime1 = 0;
+        // u32StartTime2 = 0;
         return -i32LeftFilterVel;
     }
     else {
@@ -470,6 +479,8 @@ int32_t readFilterVel(int i){
         if (readResponseData(rightMotorDriverNode, u8RightReadBuffer, u8RightBufferSize) == -1) {Serial.println("right node read data time out"); return -1;}
         if (u8RightReadBuffer[1] != 0x03 && u8RightReadBuffer[2] != 0x04) {
             readFilterVel(RIGHT);
+            ++j;
+            if (j == i8MaxReReadTimes) {Serial.println("right node the first time re-read data time out"); j = 0; return i32RightTempVel;}
             // if (millis() - u32StartTime1 > 2000) {
             //     Serial.print(millis() - u32StartTime1);
             //     Serial.println("right node the first time re-read data time out");
@@ -477,18 +488,22 @@ int32_t readFilterVel(int i){
             //     return -1;
             // }
         }
+        j = 0;
         i32RightFilterVel = ((uint32_t)u8RightReadBuffer[3] << 24) | ((uint32_t)u8RightReadBuffer[4] << 16) | ((uint32_t)u8RightReadBuffer[5] << 8) | (uint32_t)u8RightReadBuffer[6];
-        static uint32_t u32StartTime3 = millis();
+        static int8_t m = 0;
         if (i32RightFilterVel > i32MaxSpeed || i32RightFilterVel < -i32MaxSpeed) {
             readFilterVel(RIGHT);
+            ++m;
+            if (m == i8MaxReReadTimes) {Serial.println("right node the second time re-read data time out"); m = 0; return i32RightTempVel;}
             // if (millis() - u32StartTime3 > 2000) {
             //     Serial.println("right node the second time re-read data time out");
             //     u32StartTime3 = 0;
             //     return -1;
             // }
         }
-        u32StartTime1 = 0;
-        u32StartTime3 = 0;
+        m = 0;
+        // u32StartTime1 = 0;
+        // u32StartTime3 = 0;
         return i32RightFilterVel;
     }
 }
