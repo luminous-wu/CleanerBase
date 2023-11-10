@@ -136,14 +136,24 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     // Serial.print(sLeft->actualVel_last);
     // Serial.print(" ");
     // Serial.println(sRight->actualVel_last);
-
+    static int i = 0;
     sLeft->actualVel = readFilterVel(LEFT);
     sRight->actualVel = readFilterVel(RIGHT);
     i32LeftTempVel = sLeft->actualVel;
     i32RightTempVel = sRight->actualVel;
-    // check if there is an error in reading the register value 
-    while (abs(sLeft->actualVel - sLeft->actualVel_last) > deltaVelThreshold) {sLeft->actualVel = readFilterVel(LEFT);}
-    while (abs(sRight->actualVel - sRight->actualVel_last) > deltaVelThreshold) {sRight->actualVel = readFilterVel(RIGHT);}
+    // check if there is an error in reading the register value, when the deltaVelThreshold is too small, the program will go to a dead loop.
+    while (abs(sLeft->actualVel - sLeft->actualVel_last) > deltaVelThreshold) {
+        if (i == 3) {break;}
+        ++i;
+        sLeft->actualVel = readFilterVel(LEFT);
+    }
+    i = 0;
+    while (abs(sRight->actualVel - sRight->actualVel_last) > deltaVelThreshold) {
+        if (i == 3) {break;}
+        ++i;
+        sRight->actualVel = readFilterVel(RIGHT);
+    }
+    i = 0;
 
     sLeft->actualVel_last = sLeft->actualVel;
     sRight->actualVel_last = sRight->actualVel;
@@ -171,20 +181,11 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     sLeft->error_last = sLeft->error;
     sRight->error_last = sRight->error;
 
-    // Serial.println("read motor vel");
-    // Serial.print(sLeft->actualVel);
-    // Serial.print(" ");
-     Serial.println(sRight->actualVel);
-//    Serial.println(sLeft->actualVel);
-
-    // Serial.println("error: targetvel - actualvel");
-    // Serial.print(sLeft->error);
-    // Serial.print(" ");
-    // Serial.println(sRight->error);
+//     Serial.println(sRight->actualVel);
+    Serial.println(sLeft->actualVel);
 
     sLeft->actualVel = leftIncreVel;
     sRight->actualVel = rightIncreVel;
-    // Serial.println("do cross couple end");
 
 }
 #endif

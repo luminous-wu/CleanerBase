@@ -9,17 +9,17 @@
 // #include "CCC.h"
 // extern sCrossCoupl sLeftCrossCoupl, sRightCrossCoupl;
 
-#define BAUDRATE 115200
-#define leftMotorDriverAddress 0x01
-#define rightMotorDriverAddress 0x02
+#define BAUDRATE                                        115200
+#define leftMotorDriverAddress                          0x01
+#define rightMotorDriverAddress                         0x02
 
-#define rxPin_ttl2RS485 12
-#define txPin_ttl2RS485 11
+#define rxPin_ttl2RS485                                 12
+#define txPin_ttl2RS485                                 11
 
-#define controlWord 0x6040
-#define operationMode 0x6060
-#define operateMode_PVM 0x0003
-#define encoderAddress 0x2020
+#define controlWord                                     0x6040
+#define operationMode                                   0x6060
+#define operateMode_PVM                                 0x0003
+#define encoderAddress                                  0x2020
 
 // example: uint32_t -1000 1's complement is 1111 1111 1111 1111 1111 1100 0001 0111
 //                                    HEX is    0xff      0xff     0xfc      0x18
@@ -59,8 +59,8 @@ static const uint8_t ku8MBReadHoldingRegisters       = 0x03;
 static const uint8_t ku8MBWriteSingleRegister        = 0x06;
 static const uint8_t ku8MBWriteMultipleRegisters     = 0x10;
 const uint32_t u32EncoderMaxCount                    = 10000;
-const int32_t i32MaxSpeed                            = 4000;
-const int8_t i8MaxReReadTimes                        = 15;
+const int32_t i32MaxSpeed                            = 2000;
+const int8_t i8MaxReReadTimes                        = 3;
 
 uint8_t writeData[256];
 uint8_t leftWriteData[256];
@@ -437,40 +437,33 @@ uint32_t readEncoder(int i){
 }
 
 int32_t readFilterVel(int i){
-    // static uint32_t u32StartTime1 = millis();
     static int8_t j = 0;
     if (i == LEFT) {
         leftMotorDriverNode._serial->write(u8ReadLeftFilterVel, sizeof(u8ReadLeftFilterVel));
         leftMotorDriverNode._serial->flush();
         if (readResponseData(leftMotorDriverNode, u8LeftReadBuffer, u8LeftBufferSize) == -1) {Serial.println("left node read data time out"); return -1;}
         if (u8LeftReadBuffer[1] != 0x03 && u8LeftReadBuffer[2] != 0x04) {
-            readFilterVel(LEFT);
+            if (j == i8MaxReReadTimes) {
+                // Serial.println("left node the first time re-read data time out");
+                j = 0;
+                return i32LeftTempVel;
+            }
             ++j;
-            if (j == i8MaxReReadTimes) {Serial.println("left node the first time re-read data time out"); j = 0; return i32LeftTempVel;}
-            // if (millis() - u32StartTime1 > 2000) {
-            //     Serial.print(millis() - u32StartTime1);
-            //     Serial.println("left node the first time re-read data time out");
-            //     u32StartTime1 = millis();
-            //     return -1;
-            // }
+            readFilterVel(LEFT);
         }
         j = 0;
         i32LeftFilterVel = ((uint32_t)u8LeftReadBuffer[3] << 24) | ((uint32_t)u8LeftReadBuffer[4] << 16) | ((uint32_t)u8LeftReadBuffer[5] << 8) | (uint32_t)u8LeftReadBuffer[6];
         static int8_t k = 0;
         if (i32LeftFilterVel > i32MaxSpeed || i32LeftFilterVel < -i32MaxSpeed) {
-            readFilterVel(LEFT);
+            if (k == i8MaxReReadTimes) {
+                // Serial.println("left node the second time re-read data time out");
+                k = 0;
+                return i32LeftTempVel;
+            }
             ++k;
-            if (k == i8MaxReReadTimes) {Serial.println("left node the second time re-read data time out"); k = 0; return i32LeftTempVel;}
-            // if (millis() - u32StartTime2 > 2000) {
-            //     Serial.print(millis() - u32StartTime2);
-            //     Serial.println("left node the second time re-read data time out");
-            //     u32StartTime2 = millis();
-            //     return -1;
-            // }
+            readFilterVel(LEFT);
         }
         k = 0;
-        // u32StartTime1 = 0;
-        // u32StartTime2 = 0;
         return -i32LeftFilterVel;
     }
     else {
@@ -478,32 +471,27 @@ int32_t readFilterVel(int i){
         rightMotorDriverNode._serial->flush();
         if (readResponseData(rightMotorDriverNode, u8RightReadBuffer, u8RightBufferSize) == -1) {Serial.println("right node read data time out"); return -1;}
         if (u8RightReadBuffer[1] != 0x03 && u8RightReadBuffer[2] != 0x04) {
-            readFilterVel(RIGHT);
+            if (j == i8MaxReReadTimes) {
+                // Serial.println("right node the first time re-read data time out");
+                j = 0;
+                return i32RightTempVel;
+            }
             ++j;
-            if (j == i8MaxReReadTimes) {Serial.println("right node the first time re-read data time out"); j = 0; return i32RightTempVel;}
-            // if (millis() - u32StartTime1 > 2000) {
-            //     Serial.print(millis() - u32StartTime1);
-            //     Serial.println("right node the first time re-read data time out");
-            //     u32StartTime1 = 0;
-            //     return -1;
-            // }
+            readFilterVel(RIGHT);
         }
         j = 0;
         i32RightFilterVel = ((uint32_t)u8RightReadBuffer[3] << 24) | ((uint32_t)u8RightReadBuffer[4] << 16) | ((uint32_t)u8RightReadBuffer[5] << 8) | (uint32_t)u8RightReadBuffer[6];
         static int8_t m = 0;
         if (i32RightFilterVel > i32MaxSpeed || i32RightFilterVel < -i32MaxSpeed) {
-            readFilterVel(RIGHT);
+            if (m == i8MaxReReadTimes) {
+                // Serial.println("right node the second time re-read data time out");
+                m = 0;
+                return i32RightTempVel;
+            }
             ++m;
-            if (m == i8MaxReReadTimes) {Serial.println("right node the second time re-read data time out"); m = 0; return i32RightTempVel;}
-            // if (millis() - u32StartTime3 > 2000) {
-            //     Serial.println("right node the second time re-read data time out");
-            //     u32StartTime3 = 0;
-            //     return -1;
-            // }
+            readFilterVel(RIGHT);
         }
         m = 0;
-        // u32StartTime1 = 0;
-        // u32StartTime3 = 0;
         return i32RightFilterVel;
     }
 }
