@@ -1,8 +1,8 @@
 #ifndef CCC_H   // CCC: Cross Coupling Control
 #define CCC_H
 
-// #define CCC_INC
-#define CCC_POS
+#define CCC_INC
+// #define CCC_POS
 
 #define MAX_SPEED                   10000
 #define deltaVelThreshold           30
@@ -59,35 +59,52 @@ void resetCrossCoupl() {
     sRightCrossCoupl.crossCouplGain = 0.0;
 #ifdef CCC_INC
     sLeftCrossCoupl.iTerm = 0.0;
-    sLeftCrossCoupl.Kp = 1;   // 0.2
-    sLeftCrossCoupl.Ki = 0.5; // 0.015
-    sLeftCrossCoupl.Kd = 0;   // 0.2
+    sLeftCrossCoupl.Kp = 0.2;
+    sLeftCrossCoupl.Ki = 0.5;
+    sLeftCrossCoupl.Kd = 0.1;
     sRightCrossCoupl.iTerm = 0.0;
-    sRightCrossCoupl.Kp = 1;   // 0.2
-    sRightCrossCoupl.Ki = 0.5; // 0.015
-    sRightCrossCoupl.Kd = 0;   // 0.2
+    sRightCrossCoupl.Kp = 0.2;
+    sRightCrossCoupl.Ki = 0.5;
+    sRightCrossCoupl.Kd = 0.1;
 #elif defined CCC_POS
     sLeftCrossCoupl.iTerm = 0.0;
-    sLeftCrossCoupl.Kp = 12.0;   // 0.2
-    sLeftCrossCoupl.Ki = 0.014; // 0.015
-    sLeftCrossCoupl.Kd = 0.2;   // 0.2
+    sLeftCrossCoupl.Kp = 12.0;
+    sLeftCrossCoupl.Ki = 0.014;
+    sLeftCrossCoupl.Kd = 0.2;
     sRightCrossCoupl.iTerm = 0.0;
-    sRightCrossCoupl.Kp = 12.0;   // 0.2
-    sRightCrossCoupl.Ki = 0.013; // 0.015
-    sRightCrossCoupl.Kd = 0.1;   // 0.2
+    sRightCrossCoupl.Kp = 12.0;
+    sRightCrossCoupl.Ki = 0.013;
+    sRightCrossCoupl.Kd = 0.1;
 #endif
 }
 
 #ifdef CCC_INC
 void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
 
-    sLeft->crossCouplGain = 1;
-    sRight->crossCouplGain = sLeft->targetVel / sRight->targetVel;
-
-    // sLeft->actualVel = sLeft->Encoder - sLeft->Encoder_last;
-    // sRight->actualVel = sRight->Encoder - sRight->Encoder_last;
+    static int i = 0;
     sLeft->actualVel = readFilterVel(LEFT);
     sRight->actualVel = readFilterVel(RIGHT);
+    i32LeftTempVel = sLeft->actualVel;
+    i32RightTempVel = sRight->actualVel;
+    // check if there is an error in reading the register value, when the deltaVelThreshold is too small, the program will go to a dead loop.
+    while (abs(sLeft->actualVel - sLeft->actualVel_last) > deltaVelThreshold) {
+        if (i == 3) {break;}
+        ++i;
+        sLeft->actualVel = readFilterVel(LEFT);
+    }
+    i = 0;
+    while (abs(sRight->actualVel - sRight->actualVel_last) > deltaVelThreshold) {
+        if (i == 3) {break;}
+        ++i;
+        sRight->actualVel = readFilterVel(RIGHT);
+    }
+    i = 0;
+
+    sLeft->actualVel_last = sLeft->actualVel;
+    sRight->actualVel_last = sRight->actualVel;
+
+    sLeft->crossCouplGain = 1;
+    sRight->crossCouplGain = sLeft->targetVel / sRight->targetVel;
 
     sMotorsCrossCouplPara.error = sLeft->actualVel * sLeft->crossCouplGain - sRight->actualVel * sRight->crossCouplGain;
 
@@ -106,23 +123,12 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     float leftIncreVel = sLeft->Kp * (sLeft->error - sLeft->error_next) + sLeft->Ki * sLeft->error+ sLeft->Kd * (sLeft->error - 2 * sLeft->error_next + sLeft->error_last);
     float rightIncreVel =  sRight->Kp * (sRight->error - sRight->error_next) + sRight->Ki * sRight->error + sRight->Kd * (sRight->error - 2 * sRight->error_next + sRight->error_last);
 
-    // sLeft->Encoder_last = sLeft->Encoder;
-    // sRight->Encoder_last = sRight->Encoder;
-
     sLeft->error_last = sLeft->error_next;
     sLeft->error_next = sLeft->error;
     sRight->error_last = sRight->error_next;
     sRight->error_next = sRight->error;
-
-    Serial.println("read motor vel");
-    Serial.print(sLeft->actualVel);
-    Serial.print(" ");
+//    Serial.println(sLeft->actualVel);
     Serial.println(sRight->actualVel);
-
-    Serial.println("error: targetvel - actualvel");
-    Serial.print(sLeft->error);
-    Serial.print(" ");
-    Serial.println(sRight->error);
 
     sLeft->actualVel += leftIncreVel;
     sRight->actualVel += rightIncreVel;
@@ -132,10 +138,6 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
 #elif defined CCC_POS
 void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
 
-    // Serial.println("read motor lastvel");
-    // Serial.print(sLeft->actualVel_last);
-    // Serial.print(" ");
-    // Serial.println(sRight->actualVel_last);
     static int i = 0;
     sLeft->actualVel = readFilterVel(LEFT);
     sRight->actualVel = readFilterVel(RIGHT);
@@ -196,18 +198,10 @@ void updateCrossCoupl() {
 
     if (!moving) {
         if (sLeftCrossCoupl.actualVel != 0 || sRightCrossCoupl.actualVel != 0) resetCrossCoupl();
-        // Serial.println("isn't moving, update cross couple end");
         return;
     }
     doCrossCoupl(&sLeftCrossCoupl, &sRightCrossCoupl);
     setMotorSpeeds(sLeftCrossCoupl.actualVel, sRightCrossCoupl.actualVel);
-    // Serial.println("write to motor vel:");
-    // // delay(1000);
-    // Serial.print(sLeftCrossCoupl.actualVel);
-    // Serial.print(" ");
-    // Serial.println(sRightCrossCoupl.actualVel);
-    // setMotorSpeeds(sLeftCrossCoupl.targetVel, sRightCrossCoupl.targetVel);
-    // Serial.println("after do cross couple, update cross couple end");
 }
 
 #endif // CCC_H
