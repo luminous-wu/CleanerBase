@@ -16,7 +16,7 @@
 #include "CCC.h"
 
 /* Run the CCC loop at 30 times per second */
-#define CCC_RATE           100     // Hz
+#define CCC_RATE           50     // Hz
 
 /* Convert the rate into an interval */
 const int CCC_INTERVAL = 1000 / CCC_RATE;
@@ -27,7 +27,7 @@ unsigned long nextCCC = CCC_INTERVAL;
 /* Stop the robot if it hasn't received a movement command
 in this number of milliseconds */
 //  电机接收到速度指令后的运行时间
-#define AUTO_STOP_INTERVAL 3000
+#define AUTO_STOP_INTERVAL 5000
 long lastMotorCommand = AUTO_STOP_INTERVAL;
 
 
@@ -156,7 +156,7 @@ void setup() {
     resetCrossCoupl();
     
 }
-// /*
+//  /*
 void loop() {
 
     // Serial.println(Kp);
@@ -218,7 +218,7 @@ void loop() {
         // Serial.println("execute in (millis() - lastMotorCommand) > AUTO_STOP_INTERVAL ");
     }
 }
-// */
+//  */
 
 /*
 void loop()
@@ -281,12 +281,27 @@ void loop()
 
 /*
 void loop() {
-  setMotorSpeeds(0, 1000);
-  uint32_t startTime = millis();
-  while(1){
-    int vel = readFilterVel(RIGHT);
-    Serial.println(vel);
-    if(millis() - startTime > 1500) {setMotorSpeeds(0, 0);for(;;){};}
-  } 
+  
+  updateCrossCoupl();
+  delay(3000);
+//  sLeftCrossCoupl.targetVel = 200;
+//  sRightCrossCoupl.targetVel = 200;
+//  updateCrossCoupl();
+//  delay(1000);
+//  sLeftCrossCoupl.targetVel = 400;
+//  sRightCrossCoupl.targetVel = 200;
+//  updateCrossCoupl();
+//  delay(3000);
+//  sLeftCrossCoupl.targetVel = 0;
+//  sRightCrossCoupl.targetVel = 0;
+//  updateCrossCoupl();
+//  delay(3000);
+//  setMotorSpeeds(0, 0);for(;;){};
+//  uint32_t startTime = millis();
+//  while(1){
+//    int vel = readFilterVel(RIGHT);
+//    Serial.println(vel);
+//    if(millis() - startTime > 1500) {setMotorSpeeds(0, 0);for(;;){};}
+//  } 
 }
 */

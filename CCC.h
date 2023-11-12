@@ -29,13 +29,14 @@ typedef struct {
     float Kd;
     float output;
     float error;
+    float error_next;
     float error_last;
     float iTerm;
 }sCrossCouplPara;
 
 unsigned char moving = 0;
 sCrossCoupl sLeftCrossCoupl, sRightCrossCoupl;
-sCrossCouplPara sMotorsCrossCouplPara{0.5, 0.02, -0.5};
+sCrossCouplPara sMotorsCrossCouplPara{0.0, 0.01, 0.0};
 
 void resetCrossCoupl() {
     sLeftCrossCoupl.targetVel = 0.0;
@@ -106,19 +107,23 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     sLeft->crossCouplGain = 1;
     sRight->crossCouplGain = sLeft->targetVel / sRight->targetVel;
 
-    sMotorsCrossCouplPara.error = sLeft->actualVel * sLeft->crossCouplGain - sRight->actualVel * sRight->crossCouplGain;
+    sMotorsCrossCouplPara.error = sLeft->targetVel * sLeft->crossCouplGain - sRight->targetVel * sRight->crossCouplGain - (sLeft->actualVel * sLeft->crossCouplGain - sRight->actualVel * sRight->crossCouplGain);
 
-    sMotorsCrossCouplPara.iTerm += sMotorsCrossCouplPara.error;
+    float output = sMotorsCrossCouplPara.Kp * (sMotorsCrossCouplPara.error - sMotorsCrossCouplPara.error_next) + sMotorsCrossCouplPara.Ki * sMotorsCrossCouplPara.error + sMotorsCrossCouplPara.Kd * (sMotorsCrossCouplPara.error - 2*sMotorsCrossCouplPara.error_next + sMotorsCrossCouplPara.error_last);
+//    sMotorsCrossCouplPara.output = sMotorsCrossCouplPara.Kp * (sMotorsCrossCouplPara.error - sMotorsCrossCouplPara.error_next) + sMotorsCrossCouplPara.Ki * sMotorsCrossCouplPara.error + sMotorsCrossCouplPara.Kd * (sMotorsCrossCouplPara.error - 2*sMotorsCrossCouplPara.error_next + sMotorsCrossCouplPara.error_last);
+//    Serial.println(sMotorsCrossCouplPara.output);
+//    sMotorsCrossCouplPara.iTerm += sMotorsCrossCouplPara.error;
+    sMotorsCrossCouplPara.output += output;
+    Serial.print("CrossCouplPara.output\t");
+    Serial.print(sMotorsCrossCouplPara.output);
+    sMotorsCrossCouplPara.error_next = sMotorsCrossCouplPara.error;
+    sMotorsCrossCouplPara.error_last = sMotorsCrossCouplPara.error_next;
 
-    sMotorsCrossCouplPara.output = sMotorsCrossCouplPara.Kp * sMotorsCrossCouplPara.error + sMotorsCrossCouplPara.Ki * sMotorsCrossCouplPara.iTerm + sMotorsCrossCouplPara.Kd * (sMotorsCrossCouplPara.error - sMotorsCrossCouplPara.error_last);
+    sLeft->error = sLeft->targetVel - sMotorsCrossCouplPara.output - sLeft->actualVel;
+    sRight->error = sRight->targetVel - sMotorsCrossCouplPara.output - sRight->actualVel;
 
-    sMotorsCrossCouplPara.error_last = sMotorsCrossCouplPara.error;
-
-    // sLeft->error = sLeft->targetVel - sMotorsCrossCouplPara.output - sLeft->actualVel;
-    // sRight->error = sRight->targetVel - sMotorsCrossCouplPara.output - sRight->actualVel;
-
-    sLeft->error = sLeft->targetVel - sLeft->actualVel;
-    sRight->error = sRight->targetVel - sRight->actualVel;
+    // sLeft->error = sLeft->targetVel - sLeft->actualVel;
+    // sRight->error = sRight->targetVel - sRight->actualVel;
 
     float leftIncreVel = sLeft->Kp * (sLeft->error - sLeft->error_next) + sLeft->Ki * sLeft->error+ sLeft->Kd * (sLeft->error - 2 * sLeft->error_next + sLeft->error_last);
     float rightIncreVel =  sRight->Kp * (sRight->error - sRight->error_next) + sRight->Ki * sRight->error + sRight->Kd * (sRight->error - 2 * sRight->error_next + sRight->error_last);
@@ -127,6 +132,9 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     sLeft->error_next = sLeft->error;
     sRight->error_last = sRight->error_next;
     sRight->error_next = sRight->error;
+    Serial.print("\tLeft_vel:\t");
+    Serial.print(sLeft->actualVel);
+    Serial.print("\tRight_vel:\t");
 //    Serial.println(sLeft->actualVel);
     Serial.println(sRight->actualVel);
 
