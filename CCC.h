@@ -36,7 +36,7 @@ typedef struct {
 
 unsigned char moving = 0;
 sCrossCoupl sLeftCrossCoupl, sRightCrossCoupl;
-sCrossCouplPara sMotorsCrossCouplPara{0.0, 0.01, 0.0};
+sCrossCouplPara sCCCPara{0.09, 0, 2};
 
 void resetCrossCoupl() {
     sLeftCrossCoupl.targetVel = 0.0;
@@ -87,7 +87,8 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     sRight->actualVel = readFilterVel(RIGHT);
     i32LeftTempVel = sLeft->actualVel;
     i32RightTempVel = sRight->actualVel;
-    // check if there is an error in reading the register value, when the deltaVelThreshold is too small, the program will go to a dead loop.
+    // check if there is an error in reading the register value,
+    // when the deltaVelThreshold is too small, the program will go to a dead loop.
     while (abs(sLeft->actualVel - sLeft->actualVel_last) > deltaVelThreshold) {
         if (i == 3) {break;}
         ++i;
@@ -104,23 +105,39 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     sLeft->actualVel_last = sLeft->actualVel;
     sRight->actualVel_last = sRight->actualVel;
 
-    sLeft->crossCouplGain = 1;
-    sRight->crossCouplGain = sLeft->targetVel / sRight->targetVel;
+    sLeft->crossCouplGain = 1.0;
+    sRight->crossCouplGain = (float)sLeft->targetVel / sRight->targetVel;
 
-    sMotorsCrossCouplPara.error = sLeft->targetVel * sLeft->crossCouplGain - sRight->targetVel * sRight->crossCouplGain - (sLeft->actualVel * sLeft->crossCouplGain - sRight->actualVel * sRight->crossCouplGain);
+    sCCCPara.error = sLeft->actualVel * sLeft->crossCouplGain - sRight->actualVel * sRight->crossCouplGain;
+//    float bias = sLeft->targetVel * sLeft->crossCouplGain - sRight->targetVel * sRight->crossCouplGain;
+    sCCCPara.output = sCCCPara.Kp * sCCCPara.error + sCCCPara.Ki * sCCCPara.iTerm + sCCCPara.Kd * (sCCCPara.error - sCCCPara.error_last);
+    sCCCPara.iTerm += sCCCPara.error;
+    sCCCPara.error_last = sCCCPara.error;
 
-    float output = sMotorsCrossCouplPara.Kp * (sMotorsCrossCouplPara.error - sMotorsCrossCouplPara.error_next) + sMotorsCrossCouplPara.Ki * sMotorsCrossCouplPara.error + sMotorsCrossCouplPara.Kd * (sMotorsCrossCouplPara.error - 2*sMotorsCrossCouplPara.error_next + sMotorsCrossCouplPara.error_last);
-//    sMotorsCrossCouplPara.output = sMotorsCrossCouplPara.Kp * (sMotorsCrossCouplPara.error - sMotorsCrossCouplPara.error_next) + sMotorsCrossCouplPara.Ki * sMotorsCrossCouplPara.error + sMotorsCrossCouplPara.Kd * (sMotorsCrossCouplPara.error - 2*sMotorsCrossCouplPara.error_next + sMotorsCrossCouplPara.error_last);
-//    Serial.println(sMotorsCrossCouplPara.output);
-//    sMotorsCrossCouplPara.iTerm += sMotorsCrossCouplPara.error;
-    sMotorsCrossCouplPara.output += output;
-    Serial.print("CrossCouplPara.output\t");
-    Serial.print(sMotorsCrossCouplPara.output);
-    sMotorsCrossCouplPara.error_next = sMotorsCrossCouplPara.error;
-    sMotorsCrossCouplPara.error_last = sMotorsCrossCouplPara.error_next;
+    // sCCCPara.error = sLeft->targetVel * sLeft->crossCouplGain 
+    //                             - sRight->targetVel * sRight->crossCouplGain
+    //                             - (sLeft->actualVel * sLeft->crossCouplGain - sRight->actualVel * sRight->crossCouplGain);
+    // float output = sCCCPara.Kp * (sCCCPara.error - sCCCPara.error_next)
+    //              + sCCCPara.Ki * sCCCPara.error
+    //              + sCCCPara.Kd * (sCCCPara.error - 2*sCCCPara.error_next + sCCCPara.error_last);
+    // sCCCPara.output += output;
+    // sCCCPara.error_next = sCCCPara.error;
+    // sCCCPara.error_last = sCCCPara.error_next;
+    
+//    Serial.print("sCCCPara.error\t");
+//    Serial.print(sCCCPara.error);
+//    Serial.print("\tsCCCPara.output\t");
+//    Serial.print(sCCCPara.output);
+    
+//    sLeft->error = sLeft->targetVel - sCCCPara.output - sLeft->actualVel + bias;
+//    sRight->error = sRight->targetVel - sCCCPara.output - sRight->actualVel + bias;
+    sLeft->error = sLeft->targetVel - sCCCPara.output - sLeft->actualVel;
+    sRight->error = sRight->targetVel - sCCCPara.output - sRight->actualVel;
 
-    sLeft->error = sLeft->targetVel - sMotorsCrossCouplPara.output - sLeft->actualVel;
-    sRight->error = sRight->targetVel - sMotorsCrossCouplPara.output - sRight->actualVel;
+//    Serial.print("\tsLeft->error\t");
+//    Serial.print(sLeft->error);
+//    Serial.print("\tsRight->error\t");
+//    Serial.print(sRight->error);
 
     // sLeft->error = sLeft->targetVel - sLeft->actualVel;
     // sRight->error = sRight->targetVel - sRight->actualVel;
@@ -132,11 +149,11 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     sLeft->error_next = sLeft->error;
     sRight->error_last = sRight->error_next;
     sRight->error_next = sRight->error;
-    Serial.print("\tLeft_vel:\t");
+    Serial.print("Left_vel:\t");
     Serial.print(sLeft->actualVel);
     Serial.print("\tRight_vel:\t");
-//    Serial.println(sLeft->actualVel);
     Serial.println(sRight->actualVel);
+//    Serial.println(sLeft->actualVel);
 
     sLeft->actualVel += leftIncreVel;
     sRight->actualVel += rightIncreVel;
@@ -168,16 +185,16 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     sLeft->actualVel_last = sLeft->actualVel;
     sRight->actualVel_last = sRight->actualVel;
 
-    sMotorsCrossCouplPara.error = sLeft->actualVel * sLeft->crossCouplGain - sRight->actualVel * sRight->crossCouplGain;
+    sCCCPara.error = sLeft->actualVel * sLeft->crossCouplGain - sRight->actualVel * sRight->crossCouplGain;
 
-    sMotorsCrossCouplPara.iTerm += sMotorsCrossCouplPara.error;
+    sCCCPara.iTerm += sCCCPara.error;
 
-    sMotorsCrossCouplPara.output = sMotorsCrossCouplPara.Kp * sMotorsCrossCouplPara.error + sMotorsCrossCouplPara.Ki * sMotorsCrossCouplPara.iTerm + sMotorsCrossCouplPara.Kd * (sMotorsCrossCouplPara.error - sMotorsCrossCouplPara.error_last);
+    sCCCPara.output = sCCCPara.Kp * sCCCPara.error + sCCCPara.Ki * sCCCPara.iTerm + sCCCPara.Kd * (sCCCPara.error - sCCCPara.error_last);
 
-    sMotorsCrossCouplPara.error_last = sMotorsCrossCouplPara.error;
+    sCCCPara.error_last = sCCCPara.error;
 
-    // sLeft->error = sLeft->targetVel - sMotorsCrossCouplPara.output - sLeft->actualVel;
-    // sRight->error = sRight->targetVel - sMotorsCrossCouplPara.output - sRight->actualVel;
+    // sLeft->error = sLeft->targetVel - sCCCPara.output - sLeft->actualVel;
+    // sRight->error = sRight->targetVel - sCCCPara.output - sRight->actualVel;
 
     sLeft->error = sLeft->targetVel - sLeft->actualVel;
     sRight->error = sRight->targetVel - sRight->actualVel;
