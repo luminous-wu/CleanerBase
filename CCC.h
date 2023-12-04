@@ -149,10 +149,10 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
 
 //    Serial.print("subtraction:\t");
 //    Serial.print(sLeft->actualVel - sRight->actualVel);
-    Serial.print("Left_vel:\t");
-    Serial.print(sLeft->actualVel);
-    Serial.print("\tRight_vel:\t");
-    Serial.println(sRight->actualVel);
+    // Serial.print("Left_vel:\t");
+    // Serial.print(sLeft->actualVel);
+    // Serial.print("\tRight_vel:\t");
+    // Serial.println(sRight->actualVel);
 //    Serial.println(sLeft->actualVel);
 
     sLeft->actualVel += leftIncreVel;
