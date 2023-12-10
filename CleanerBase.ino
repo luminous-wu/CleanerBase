@@ -105,9 +105,9 @@ int runCommand() {
         Serial.println(readEncoder(RIGHT));
         break;
     case READ_VEL:
-        Serial.print(readFilterVel(LEFT));
+        Serial.print(readVel(LEFT));
         Serial.print(" ");
-        Serial.println(readFilterVel(RIGHT));
+        Serial.println(readVel(RIGHT));
         break;
     case RESET_ENCODERS:
         resetEncoders();

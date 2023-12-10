@@ -10,7 +10,7 @@
 #define IAE_EVAL   // Integral Absolute value Error, IAE
 
 #define MAX_SPEED                   10000
-#define deltaVelThreshold           30
+extern int32_t deltaVelThreshold;
 extern int32_t i32LeftTempVel;
 extern int32_t i32RightTempVel;
 
@@ -41,7 +41,7 @@ typedef struct {
 
 unsigned char moving = 0;
 sCrossCoupl sLeftCrossCoupl, sRightCrossCoupl;
-sCrossCouplPara sCCCPara{0.09, 0, 2};
+sCrossCouplPara sCCCPara{0.09, 0, 1};
 
 void resetCrossCoupl() {
     sLeftCrossCoupl.targetVel = 0.0;

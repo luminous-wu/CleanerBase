@@ -4,7 +4,7 @@
 #define SERVO_MOTOR_DRIVER_H
 
 
-#include "ModbusMaster.h"
+#include <ModbusMaster.h>
 #include <SoftwareSerial.h>
 // #include "CCC.h"
 // extern sCrossCoupl sLeftCrossCoupl, sRightCrossCoupl;
@@ -61,6 +61,7 @@ static const uint8_t ku8MBWriteMultipleRegisters     = 0x10;
 const uint32_t u32EncoderMaxCount                    = 10000;
 const int32_t i32MaxSpeed                            = 2000;
 const int8_t i8MaxReReadTimes                        = 3;
+int32_t deltaVelThreshold                            = 30;      // RPM
 
 uint8_t writeData[256];
 uint8_t leftWriteData[256];
@@ -82,6 +83,8 @@ int32_t i32LeftFilterVel;
 int32_t i32RightFilterVel;
 int32_t i32LeftTempVel;
 int32_t i32RightTempVel;
+int32_t i32LeftTempVel_last;
+int32_t i32RightTempVel_last;
 
 uint16_t _u16WriteAddress;
 uint16_t _u16ReadAddress;
@@ -108,7 +111,8 @@ uint32_t readEncoder(int i);
 void resetEncoder(int i);
 void resetEncoders();
 void Modbus2Transaction(uint8_t u8MBFunction);
-
+int32_t readVel(int i);
+int32_t readFilterVel(int i);
 void read2MotorsHoldingRegisters(uint16_t u16ReadAddress, uint16_t u16LeftRightReadSize);
 
 void initMotorController() {
@@ -433,6 +437,33 @@ uint32_t readEncoder(int i){
         u32RightEncoderCount = ((uint32_t)u8RightReadBuffer[3] << 24) | ((uint32_t)u8RightReadBuffer[4] << 16) | ((uint32_t)u8RightReadBuffer[5] << 8) | (uint32_t)u8RightReadBuffer[6];
          if (u32RightEncoderCount > u32EncoderMaxCount) {readEncoder(RIGHT);}
         return u32RightEncoderCount;
+    }
+}
+
+int32_t readVel(int i) {
+    static int iLeft_count = 0;
+    static int iRight_count = 0;
+    if (i == LEFT) {
+        i32LeftTempVel = readFilterVel(LEFT);
+        while (abs(i32LeftTempVel - i32LeftTempVel_last) > deltaVelThreshold) {
+            if (iLeft_count == 3) {break;}
+            ++iLeft_count;
+            i32LeftTempVel = readFilterVel(LEFT);
+        }
+        i32LeftTempVel_last = i32LeftTempVel;
+        iLeft_count = 0;
+        return i32LeftTempVel;
+    }
+    else {
+        i32RightTempVel = readFilterVel(RIGHT);
+        while (abs(i32RightTempVel - i32RightTempVel_last) > deltaVelThreshold) {
+            if (iRight_count == 3) {break;}
+            ++iRight_count;
+            i32RightTempVel = readFilterVel(RIGHT);
+        }
+        i32RightTempVel_last = i32RightTempVel;
+        iRight_count = 0;
+        return i32RightTempVel;
     }
 }
 
