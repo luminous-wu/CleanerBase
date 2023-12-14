@@ -86,6 +86,47 @@
     setMotorSpeed(LEFT, leftSpeed);
     setMotorSpeed(RIGHT, rightSpeed);
   }
+#elif defined L298P_MOTOR_DRIVER
+  void initMotorController(){
+      pinMode(LEFT_DIR,OUTPUT);
+      pinMode(LEFT_PWM,OUTPUT);
+      pinMode(RIGHT_DIR,OUTPUT);
+      pinMode(RIGHT_PWM,OUTPUT);
+  }
+
+  void setMotorSpeed(int i, int spd){
+  unsigned char reverse = 0;
+
+  if (spd < 0)
+  {
+      spd = -spd;
+      reverse = 1;
+  }
+  if (spd > 255)
+      spd = 255;
+
+  if (i == LEFT) { 
+      if (reverse == 0) { 
+      digitalWrite(LEFT_DIR,LOW);
+      } else if (reverse == 1) { 
+      digitalWrite(LEFT_DIR,HIGH);
+      }
+      analogWrite(LEFT_PWM,spd);
+  } else /*if (i == RIGHT) //no need for condition*/ {
+      if (reverse == 0) { 
+      digitalWrite(RIGHT_DIR,HIGH);        
+      } else if (reverse == 1) { 
+      digitalWrite(RIGHT_DIR,LOW);
+      }
+      analogWrite(RIGHT_PWM,spd);
+  }
+  }
+
+  void setMotorSpeeds(int leftSpeed, int rightSpeed){
+      setMotorSpeed(LEFT, leftSpeed);
+      setMotorSpeed(RIGHT, rightSpeed);
+  }
+
 #else
   #error A motor driver must be selected!
 #endif

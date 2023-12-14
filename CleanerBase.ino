@@ -51,20 +51,21 @@
 /* Define the motor controller and encoder library you are using */
 #ifdef USE_BASE
    /* The Pololu VNH5019 dual motor driver shield */
-//    #define POLOLU_VNH5019
+   // #define POLOLU_VNH5019
 
    /* The Pololu MC33926 dual motor driver shield */
    //#define POLOLU_MC33926
 
    /* The RoboGaia encoder shield */
-//    #define ROBOGAIA
+   // #define ROBOGAIA
    
    /* Encoders directly attached to Arduino board */
-   //#define ARDUINO_ENC_COUNTER
+  //  #define ARDUINO_ENC_COUNTER
+
    #define ARDUINO_MY_COUNTER
 
    /* L298 Motor driver*/
-   //#define L298_MOTOR_DRIVER
+  //  #define L298_MOTOR_DRIVER
    #define L298P_MOTOR_DRIVER
 #endif
 
@@ -72,7 +73,7 @@
 #undef USE_SERVOS     // Disable use of PWM servos
 
 /* Serial port baud rate */
-#define BAUDRATE     57600
+#define BAUDRATE     115200
 
 /* Maximum PWM signal */
 #define MAX_PWM        255
@@ -116,7 +117,8 @@
 
   /* Stop the robot if it hasn't received a movement command
    in this number of milliseconds */
-  #define AUTO_STOP_INTERVAL 2000
+  //  电机接收到速度指令后的运行时间
+  #define AUTO_STOP_INTERVAL 5000
   long lastMotorCommand = AUTO_STOP_INTERVAL;
 #endif
 
@@ -206,6 +208,7 @@ int runCommand() {
    case RESET_ENCODERS:
     resetEncoders();
     resetPID();
+    // resetCrossCoupl();
     Serial.println("OK");
     break;
   case MOTOR_SPEEDS:
@@ -214,11 +217,16 @@ int runCommand() {
     if (arg1 == 0 && arg2 == 0) {
       setMotorSpeeds(0, 0);
       resetPID();
+      // resetCrossCoupl();
       moving = 0;
     }
     else moving = 1;
+    // 设置PID调试的目标
     leftPID.TargetTicksPerFrame = arg1;
     rightPID.TargetTicksPerFrame = arg2;
+    // sLeftCrossCoupl.TargetTicksPerFrame = arg1;
+    // sRightCrossCoupl.TargetTicksPerFrame = arg2;
+
     Serial.println("OK"); 
     break;
   case UPDATE_PID:
@@ -226,6 +234,25 @@ int runCommand() {
        pid_args[i] = atoi(str);
        i++;
     }
+    // sLeftCrossCoupl.Kp = pid_args[0];
+    // sLeftCrossCoupl.Kd = pid_args[1];
+    // sLeftCrossCoupl.Ki = pid_args[2];
+    // sLeftCrossCoupl.Ko = pid_args[3];
+
+    // sRightCrossCoupl.Kp = pid_args[4];
+    // sRightCrossCoupl.Kd = pid_args[5];
+    // sRightCrossCoupl.Ki = pid_args[6];
+    // sRightCrossCoupl.Ko = pid_args[7];
+
+    // leftPID.Kp = pid_args[0];
+    // leftPID.Kd = pid_args[1];
+    // leftPID.Ki = pid_args[2];
+    // leftPID.Ko = pid_args[3];
+
+    // rightPID.Kp = pid_args[4];
+    // rightPID.Kd = pid_args[5];
+    // rightPID.Ki = pid_args[6];
+    // rightPID.Ko = pid_args[7];
     Kp = pid_args[0];
     Kd = pid_args[1];
     Ki = pid_args[2];
@@ -271,6 +298,7 @@ void setup() {
   
   initMotorController();
   resetPID();
+  // resetCrossCoupl();
 #endif
 
 /* Attach servos if used */
@@ -290,6 +318,7 @@ void setup() {
    interval and check for auto-stop conditions.
 */
 void loop() {
+  // Serial.println(Kp);
   while (Serial.available() > 0) {
     
     // Read the next character
@@ -333,7 +362,8 @@ void loop() {
 // If we are using base control, run a PID calculation at the appropriate intervals
 #ifdef USE_BASE
   if (millis() > nextPID) {
-    updatePID();
+    updatePID(); // 循环执行 PID 调试
+    // updateCrossCoupl();
     nextPID += PID_INTERVAL;
   }
   

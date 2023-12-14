@@ -15,11 +15,12 @@
 #define RESET_ENCODERS 'r'
 #define SERVO_WRITE    's'
 #define SERVO_READ     't'
-#define UPDATE_CCC     'u'
-#define READ_VEL       'v'
+#define UPDATE_PID     'u'
 #define DIGITAL_WRITE  'w'
 #define ANALOG_WRITE   'x'
 #define LEFT            0
 #define RIGHT           1
 
 #endif
+
+
