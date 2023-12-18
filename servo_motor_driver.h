@@ -9,7 +9,7 @@
 // #include "CCC.h"
 // extern sCrossCoupl sLeftCrossCoupl, sRightCrossCoupl;
 
-#define BAUDRATE                                        115200
+#define BAUDRATE                                        9600
 #define leftMotorDriverAddress                          0x01
 #define rightMotorDriverAddress                         0x02
 
