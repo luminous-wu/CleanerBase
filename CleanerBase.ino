@@ -73,7 +73,7 @@
 #undef USE_SERVOS     // Disable use of PWM servos
 
 /* Serial port baud rate */
-#define BAUDRATE     115200
+#define BAUDRATE     9600
 
 /* Maximum PWM signal */
 #define MAX_PWM        255
