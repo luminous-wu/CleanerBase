@@ -9,7 +9,8 @@
 // #include "CCC.h"
 // extern sCrossCoupl sLeftCrossCoupl, sRightCrossCoupl;
 
-#define BAUDRATE                                        9600
+#define BAUDRATE_MOTOR_DRIVER                           115200
+#define BAUDRATE_ARDUINO_PC                             9600
 #define leftMotorDriverAddress                          0x01
 #define rightMotorDriverAddress                         0x02
 
@@ -117,11 +118,11 @@ void read2MotorsHoldingRegisters(uint16_t u16ReadAddress, uint16_t u16LeftRightR
 
 void initMotorController() {
     
-    Serial.begin(BAUDRATE);
+    Serial.begin(BAUDRATE_ARDUINO_PC);
 
     // instantiating a Soft Serial Port, TTL2RS485 module to servo motor driver
     
-    MotorDriverSerial.begin(BAUDRATE);
+    MotorDriverSerial.begin(BAUDRATE_MOTOR_DRIVER);
 
     leftMotorDriverNode.begin(leftMotorDriverAddress, MotorDriverSerial);
     rightMotorDriverNode.begin(rightMotorDriverAddress, MotorDriverSerial);
@@ -138,10 +139,10 @@ void initMotorController() {
 }
 
 void initMotorsController() {
-    Serial.begin(BAUDRATE);
+    Serial.begin(BAUDRATE_ARDUINO_PC);
 
     // instantiating a Soft Serial Port, TTL2RS485 module to servo motor driver
-    MotorDriverSerial.begin(BAUDRATE);
+    MotorDriverSerial.begin(BAUDRATE_MOTOR_DRIVER);
 
     leftMotorDriverNode.begin(leftMotorDriverAddress, MotorDriverSerial);
     rightMotorDriverNode.begin(rightMotorDriverAddress, MotorDriverSerial);

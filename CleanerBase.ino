@@ -74,7 +74,7 @@ int runCommand() {
     
     switch(cmd) {
     case GET_BAUDRATE:
-        Serial.println(BAUDRATE);
+        Serial.println(BAUDRATE_ARDUINO_PC);
         break;
     case ANALOG_READ:
         Serial.println(analogRead(arg1));
