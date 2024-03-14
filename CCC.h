@@ -135,10 +135,10 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
   #endif 
 //    sLeft->error = sLeft->targetVel - sCCCPara.output - sLeft->actualVel + bias;
 //    sRight->error = sRight->targetVel - sCCCPara.output - sRight->actualVel + bias;
-
+    
     sLeft->error = sLeft->targetVel - sCCCPara.output - sLeft->actualVel;
     sRight->error = sRight->targetVel - sCCCPara.output - sRight->actualVel;
-
+        
     float leftIncreVel = sLeft->Kp * (sLeft->error - sLeft->error_next) + sLeft->Ki * sLeft->error+ sLeft->Kd * (sLeft->error - 2 * sLeft->error_next + sLeft->error_last);
     float rightIncreVel =  sRight->Kp * (sRight->error - sRight->error_next) + sRight->Ki * sRight->error + sRight->Kd * (sRight->error - 2 * sRight->error_next + sRight->error_last);
 
@@ -147,18 +147,18 @@ void doCrossCoupl(sCrossCoupl* sLeft, sCrossCoupl* sRight) {
     sRight->error_last = sRight->error_next;
     sRight->error_next = sRight->error;
 
-//    Serial.print("subtraction:\t");
-//    Serial.print(sLeft->actualVel - sRight->actualVel);
+    // Serial.print("subtraction:\t");
+    // Serial.print(sLeft->actualVel - sRight->actualVel);
     // Serial.print("Left_vel:\t");
-    // Serial.print(sLeft->actualVel);
+    // Serial.println(sLeft->actualVel);
     // Serial.print("\tRight_vel:\t");
     // Serial.println(sRight->actualVel);
-//    Serial.println(sLeft->actualVel);
+    // Serial.println(sLeft->actualVel);
 
     sLeft->actualVel += leftIncreVel;
     sRight->actualVel += rightIncreVel;
-    sLeft->actualVel = sLeft->targetVel;
-    sRight->actualVel = sRight->targetVel;
+    // sLeft->actualVel = sLeft->targetVel;
+    // sRight->actualVel = sRight->targetVel;
 
 #elif defined USE_DEFAULT
 //    Serial.print("subtraction:\t");

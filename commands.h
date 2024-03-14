@@ -10,6 +10,7 @@
 #define PIN_MODE       'c'
 #define DIGITAL_READ   'd'
 #define READ_ENCODERS  'e'
+#define READ_PID_PARAM 'f'
 #define MOTOR_SPEEDS   'm'
 #define PING           'p'
 #define RESET_ENCODERS 'r'
@@ -55,5 +56,3 @@ long Ping(int pin) {
 }
 
 #endif
-
-

@@ -45,8 +45,8 @@ char chr;
 char cmd;
 
 // Character arrays to hold the first and second arguments
-char argv1[16];
-char argv2[16];
+char argv1[50];
+char argv2[50];
 
 // The arguments converted to integers
 long arg1;
@@ -68,9 +68,9 @@ int runCommand() {
     int i = 0;
     char *p = argv1;
     char *str;
-    int CCC_args[8];
-    arg1 = atoi(argv1);
-    arg2 = atoi(argv2);
+    float CCC_args[10];
+    arg1 = atof(argv1);
+    arg2 = atof(argv2);
     
     switch(cmd) {
     case GET_BAUDRATE:
@@ -131,18 +131,48 @@ int runCommand() {
         break;
     case UPDATE_CCC:
         while ((str = strtok_r(p, ":", &p)) != '\0') {
-            CCC_args[i] = atoi(str);
+            CCC_args[i] = atof(str);
             i++;
         }
         sLeftCrossCoupl.Kp = CCC_args[0];
-        sLeftCrossCoupl.Kd = CCC_args[1];
-        sLeftCrossCoupl.Ki = CCC_args[2];
-
+        sLeftCrossCoupl.Ki = CCC_args[1];
+        sLeftCrossCoupl.Kd = CCC_args[2];
         sRightCrossCoupl.Kp = CCC_args[3];
-        sRightCrossCoupl.Kd = CCC_args[4];
-        sRightCrossCoupl.Ki = CCC_args[5];
-
+        sRightCrossCoupl.Ki = CCC_args[4];
+        sRightCrossCoupl.Kd = CCC_args[5];
+        sCCCPara.Kp = CCC_args[6];
+        sCCCPara.Ki = CCC_args[7];
+        sCCCPara.Kd = CCC_args[8];
+        
+        // Serial.print(sLeftCrossCoupl.Kp);
+        // Serial.print(sLeftCrossCoupl.Ki);
+        // Serial.print(sLeftCrossCoupl.Kd);
+        // Serial.print(sRightCrossCoupl.Kp);
+        // Serial.print(sRightCrossCoupl.Ki);
+        // Serial.print(sRightCrossCoupl.Kd);
+        // Serial.print(sCCCPara.Kp);
+        // Serial.print(sCCCPara.Ki);
+        // Serial.print(sCCCPara.Kd);
         Serial.println("OK");
+        break;
+    case READ_PID_PARAM:
+        Serial.print(float(sLeftCrossCoupl.Kp));
+        Serial.print(" ");
+        Serial.print(float(sLeftCrossCoupl.Ki));
+        Serial.print(" ");
+        Serial.print(float(sLeftCrossCoupl.Kd));
+        Serial.print(" ");
+        Serial.print(float(sRightCrossCoupl.Kp));
+        Serial.print(" ");
+        Serial.print(float(sRightCrossCoupl.Ki));
+        Serial.print(" ");
+        Serial.print(float(sRightCrossCoupl.Kd));
+        Serial.print(" ");
+        Serial.print(float(sCCCPara.Kp));
+        Serial.print(" ");
+        Serial.print(float(sCCCPara.Ki));
+        Serial.print(" ");
+        Serial.println(float(sCCCPara.Kd));
         break;
     default:
         Serial.println("Invalid Command");
@@ -219,89 +249,3 @@ void loop() {
     }
 }
 //  */
-
-/*
-void loop()
-{
-    while (Serial.available() > 0) {
-    
-        // Read the next character
-        chr = Serial.read();
-
-        // Terminate a command with a CR
-        if (chr == 13) {
-            if (arg == 1) argv1[index] = NULL;
-            else if (arg == 2) argv2[index] = NULL;
-            runCommand();
-            resetCommand();
-            // Serial.println("execute in "chr == 13" ");
-        }
-        // Use spaces to delimit parts of the command
-        else if (chr == ' ') {
-            // Step through the arguments
-            if (arg == 0) arg = 1;
-            else if (arg == 1)  {
-                argv1[index] = NULL;
-                arg = 2;
-                index = 0;
-            }
-            // Serial.println("execute in "chr == ' '" ");
-            continue;
-        }
-        else {
-            // Serial.println("execute in "chr == '  2'" ");
-            if (arg == 0) {
-                // The first arg is the single-letter command
-                cmd = chr;
-            }
-            else if (arg == 1) {
-                // Subsequent arguments can be more than one character
-                argv1[index] = chr;
-                index++;
-            }
-            else if (arg == 2) {
-                argv2[index] = chr;
-                index++;
-            }
-        }
-    }
-
-    // uint32_t u32StartTime = millis();
-    // updateCrossCoupl();
-    setMotorSpeeds(200, 200);
-    // Serial.println(millis() - u32StartTime);
-    // Check to see if we have exceeded the auto-stop interval
-    if ((millis() - lastMotorCommand) > AUTO_STOP_INTERVAL) {;
-        setMotorSpeeds(0, 0);
-        moving = 0;
-        // Serial.println("execute in (millis() - lastMotorCommand) > AUTO_STOP_INTERVAL ");
-    }
-}
-*/
-
-/*
-void loop() {
-  
-  updateCrossCoupl();
-  delay(3000);
-//  sLeftCrossCoupl.targetVel = 200;
-//  sRightCrossCoupl.targetVel = 200;
-//  updateCrossCoupl();
-//  delay(1000);
-//  sLeftCrossCoupl.targetVel = 400;
-//  sRightCrossCoupl.targetVel = 200;
-//  updateCrossCoupl();
-//  delay(3000);
-//  sLeftCrossCoupl.targetVel = 0;
-//  sRightCrossCoupl.targetVel = 0;
-//  updateCrossCoupl();
-//  delay(3000);
-//  setMotorSpeeds(0, 0);for(;;){};
-//  uint32_t startTime = millis();
-//  while(1){
-//    int vel = readFilterVel(RIGHT);
-//    Serial.println(vel);
-//    if(millis() - startTime > 1500) {setMotorSpeeds(0, 0);for(;;){};}
-//  } 
-}
-*/
